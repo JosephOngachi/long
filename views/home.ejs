@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Trading Simulation</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f0f0f0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .container {
+      text-align: center;
+      padding: 20px;
+      background-color: white;
+      box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.1);
+      border-radius: 10px;
+    }
+    h1 {
+      margin-bottom: 10px;
+    }
+    .profit, .position, .price, .entry-price, .current-pl {
+      font-size: 1.5rem;
+      color: #333;
+    }
+    .profit {
+      color: green;
+    }
+    .current-pl {
+      color: blue;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 1rem;
+      cursor: pointer;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Live Trading Simulation</h1>
+    <div class="profit">Total Profit: $0.00</div>
+    <div class="position">Position: None</div>
+    <div class="entry-price">Entry Price: $0.00</div>
+    <div class="price">Current Price: $0.00</div>
+    <div class="current-pl">Current P/L: $0.00</div>
+    <button id="claimButton">Claim</button>
+    <button id="startStopButton">Start</button> <!-- Start/Stop Button -->
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+
+    let totalProfit = 0; // Variable to keep track of the total profit
+
+    // Update frontend with the latest trade info
+    socket.on('tradeUpdate', data => {
+      document.querySelector('.profit').textContent = `Total Profit: $${data.profit}`;
+      document.querySelector('.position').textContent = `Position: ${data.position}`;
+      document.querySelector('.entry-price').textContent = `Entry Price: $${data.entryPrice}`;
+      document.querySelector('.price').textContent = `Current Price: $${data.currentPrice}`;
+      document.querySelector('.current-pl').textContent = `Current P/L: $${data.currentProfitOrLoss}`;
+
+      // Check if current P/L is above $0.05 and trigger claim if true
+      const currentPL = parseFloat(data.currentProfitOrLoss);
+      if (currentPL > 5) {
+        handleClaim(currentPL);
+      }
+    });
+
+    // Function to handle the claim process
+    async function handleClaim(currentPL) {
+      totalProfit += currentPL; // Update total profit with the current P/L
+      const response = await fetch('/claim', { method: 'POST' });
+      const result = await response.json();
+      alert(result.message);
+    }
+
+    // Handle claim button click
+    document.getElementById('claimButton').addEventListener('click', async () => {
+      const currentPLText = document.querySelector('.current-pl').textContent;
+      const currentPL = parseFloat(currentPLText.replace('Current P/L: $', '')) || 0;
+      await handleClaim(currentPL);
+    });
+
+    // Handle start/stop button click
+    document.getElementById('startStopButton').addEventListener('click', async () => {
+      const currentText = document.getElementById('startStopButton').textContent;
+      const response = await fetch('/startstop', { method: 'POST' });
+      const result = await response.json();
+      alert(result.message);
+      document.getElementById('startStopButton').textContent = currentText === 'Start' ? 'Stop' : 'Start';
+    });
+  </script>
+</body>
+</html>
